@@ -565,3 +565,33 @@ echo 'npx lint-staged && npm run typecheck' > .husky/pre-commit
   }
 }
 ```
+
+---
+
+## 既知の実装上の注意事項
+
+### next-auth バージョン
+
+`next-auth@5` は現時点でベータ版のため、`package.json` では `5.0.0-beta.31` のように明示指定する。`@auth/prisma-adapter` は別パッケージとして `^2.0.0` を追加する。
+
+### vitest パスエイリアス
+
+`vite-tsconfig-paths` はESM onlyのため `vitest.config.ts`（CJSでロード）での利用は不可。代わりに `resolve.alias` を直接定義する:
+
+```typescript
+// vitest.config.ts
+import path from 'path';
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  // ...
+});
+```
+
+### next lint の設定
+
+`next lint` を非インタラクティブで動作させるには、事前に `eslint.config.mjs` を作成しておく必要がある。
