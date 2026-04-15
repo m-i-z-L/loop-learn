@@ -149,6 +149,8 @@ erDiagram
     USER ||--o{ DECK : owns
     USER ||--o{ CARD : owns
     USER ||--o{ REVIEW_LOG : has
+    USER ||--o{ ACCOUNT : has
+    USER ||--o{ SESSION : has
     DECK ||--o{ CARD : contains
     CARD ||--o{ REVIEW_LOG : has
 
@@ -193,7 +195,30 @@ erDiagram
         int newInterval
         datetime reviewedAt
     }
+    ACCOUNT {
+        string id PK
+        string userId FK
+        string type
+        string provider
+        string providerAccountId
+        string refresh_token
+        string access_token
+        int expires_at
+    }
+    SESSION {
+        string id PK
+        string sessionToken UK
+        string userId FK
+        datetime expires
+    }
+    VERIFICATION_TOKEN {
+        string identifier
+        string token UK
+        datetime expires
+    }
 ```
+
+> **注**: `ACCOUNT`・`SESSION`・`VERIFICATION_TOKEN` は NextAuth.js (Auth.js v5) の Database Adapter が自動管理するテーブル。アプリケーションコードから直接操作しない。
 
 ---
 
@@ -203,6 +228,7 @@ erDiagram
 
 ```
 app/
+├── page.tsx                    # ランディングページ (未ログイン時: サービス紹介・ログイン/新規登録ボタン)
 ├── (auth)/
 │   ├── login/page.tsx          # ログイン画面
 │   └── register/page.tsx       # 新規登録画面
@@ -458,7 +484,7 @@ sequenceDiagram
 
     User->>UI: カードを編集・削除・追加
     User->>UI: 「保存」クリック
-    UI->>API: POST /api/cards (バッチ)
+    UI->>API: POST /api/cards/batch
     API->>DB: Card.createMany(...)
     DB-->>API: 成功
     API-->>UI: 保存済みカードリスト
@@ -610,6 +636,34 @@ stateDiagram-v2
 
 ---
 
+#### `GET /api/decks/:deckId`
+指定したデッキの詳細情報をカード枚数・習熟度統計付きで返す。
+
+**レスポンス**:
+```json
+{
+  "id": "uuid",
+  "name": "TypeScript基礎",
+  "description": "TypeScriptの型システムを学ぶ",
+  "icon": "📘",
+  "cardCount": 42,
+  "todayReviewCount": 5,
+  "masteryDistribution": {
+    "unlearned": 10,
+    "learning": 25,
+    "mastered": 7
+  },
+  "createdAt": "2026-04-01T00:00:00Z",
+  "updatedAt": "2026-04-14T00:00:00Z"
+}
+```
+
+**エラー**:
+- 401: 未認証
+- 404: デッキが存在しない、または他ユーザーのデッキ
+
+---
+
 #### `PUT /api/decks/:deckId`
 デッキの名前・説明・アイコンを更新する。
 
@@ -636,6 +690,43 @@ stateDiagram-v2
 **レスポンス** (204): ボディなし
 
 **エラー**:
+- 401: 未認証
+- 404: デッキが存在しない、または他ユーザーのデッキ
+
+---
+
+#### `GET /api/cards`
+デッキに属するカード一覧を返す。カーソルページネーション (20件/ページ)。
+
+**クエリパラメータ**:
+- `deckId` (必須): 取得対象のデッキID
+- `cursor`: ページネーション用カーソル (前ページ最後のカードID)
+
+**レスポンス**:
+```json
+{
+  "cards": [
+    {
+      "id": "uuid",
+      "deckId": "uuid",
+      "cardType": "qa",
+      "front": "TypeScriptのジェネリクスとは？",
+      "back": "型をパラメータとして受け取る仕組み",
+      "tags": ["typescript", "generics"],
+      "easeFactor": 2.5,
+      "interval": 6,
+      "repetitions": 2,
+      "nextReviewDate": "2026-04-20T00:00:00Z",
+      "createdAt": "2026-04-01T00:00:00Z"
+    }
+  ],
+  "nextCursor": "uuid-of-last-item",
+  "hasMore": true
+}
+```
+
+**エラー**:
+- 400: `deckId` が指定されていない
 - 401: 未認証
 - 404: デッキが存在しない、または他ユーザーのデッキ
 
@@ -687,6 +778,33 @@ stateDiagram-v2
 
 ---
 
+#### `GET /api/cards/:cardId`
+指定したカードの詳細情報を返す。カード編集画面の初期データ取得に使用。
+
+**レスポンス**:
+```json
+{
+  "id": "uuid",
+  "deckId": "uuid",
+  "cardType": "qa",
+  "front": "TypeScriptのジェネリクスとは？",
+  "back": "型をパラメータとして受け取る仕組み",
+  "tags": ["typescript", "generics"],
+  "easeFactor": 2.5,
+  "interval": 6,
+  "repetitions": 2,
+  "nextReviewDate": "2026-04-20T00:00:00Z",
+  "createdAt": "2026-04-01T00:00:00Z",
+  "updatedAt": "2026-04-14T00:00:00Z"
+}
+```
+
+**エラー**:
+- 401: 未認証
+- 404: カードが存在しない、または他ユーザーのカード
+
+---
+
 #### `DELETE /api/cards/:cardId`
 カードを削除する。紐づく復習ログもCASCADE DELETEされる。
 
@@ -698,8 +816,46 @@ stateDiagram-v2
 
 ---
 
+#### `POST /api/cards/batch`
+AI生成カードを一括保存する。`POST /api/ai/generate` で生成したカードをまとめて保存する用途。
+
+**リクエスト**:
+```json
+{
+  "deckId": "uuid",
+  "cards": [
+    { "cardType": "qa", "front": "ジェネリクスの目的は？", "back": "型の再利用性を高めること", "tags": ["typescript"] },
+    { "cardType": "qa", "front": "Array<T> と T[] の違いは？", "back": "記述方法のみ異なり意味は同じ", "tags": ["typescript"] }
+  ]
+}
+```
+
+**レスポンス** (201):
+```json
+{
+  "created": 2,
+  "cards": [
+    { "id": "uuid", "deckId": "uuid", "cardType": "qa", "front": "...", "back": "...", "tags": ["typescript"], "createdAt": "2026-04-14T00:00:00Z" }
+  ]
+}
+```
+
+**制約**:
+- 一度に保存できるカード数: 最大10件（AI生成の `count` 上限と一致）
+- 各カードのバリデーションは `POST /api/cards` と同一 (front/back 各2000字以内、タグ10個以内)
+
+**エラー**:
+- 400: `cards` が空 / 上限超過 / 個別カードのバリデーションエラー
+- 401: 未認証
+- 404: `deckId` が存在しない、または他ユーザーのデッキ
+
+---
+
 #### `GET /api/review/today`
 本日復習予定のカードを返す。`deckId` クエリパラメータで絞り込み可能。
+
+**クエリパラメータ**:
+- `deckId` (任意): 指定したデッキのカードのみを返す
 
 **レスポンス**:
 ```json
@@ -717,6 +873,9 @@ stateDiagram-v2
   "total": 12
 }
 ```
+
+**エラー**:
+- 401: 未認証
 
 ---
 
@@ -736,6 +895,11 @@ stateDiagram-v2
   "nextReviewDate": "2026-04-20T00:00:00Z"
 }
 ```
+
+**エラー**:
+- 400: `rating` が 1〜4 の整数以外
+- 401: 未認証
+- 404: カードが存在しない、または他ユーザーのカード
 
 ---
 
@@ -762,8 +926,39 @@ stateDiagram-v2
 
 **エラー**:
 - 400: textが空 / 文字数が5000字超
+- 401: 未認証
 - 429: API呼び出し制限超過
 - 504: Gemini API タイムアウト (30秒)
+
+---
+
+#### `GET /api/stats`
+ログインユーザーの学習統計を返す。ダッシュボード表示に使用する。
+
+**クエリパラメータ**:
+- `days` (任意, デフォルト: 30): ヒートマップの対象日数
+
+**レスポンス**:
+```json
+{
+  "totalCards": 120,
+  "masteryDistribution": {
+    "unlearned": 30,
+    "learning": 60,
+    "mastered": 30
+  },
+  "currentStreak": 14,
+  "todayReviewCount": 8,
+  "weeklyCompletionRate": 0.85,
+  "heatmap": [
+    { "date": "2026-04-14", "count": 8 },
+    { "date": "2026-04-13", "count": 5 }
+  ]
+}
+```
+
+**エラー**:
+- 401: 未認証
 
 ---
 

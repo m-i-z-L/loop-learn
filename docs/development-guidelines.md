@@ -168,7 +168,39 @@ git push origin main --tags
 ```
 
 タグはセマンティックバージョニング (`vMAJOR.MINOR.PATCH`) に従う。  
-リリースに含まれた変更は `CHANGELOG.md` へ追記する ([Keep a Changelog](https://keepachangelog.com/) 形式)。
+リリースに含まれた変更は `CHANGELOG.md`（リポジトリルート）へ追記する ([Keep a Changelog](https://keepachangelog.com/) 形式)。
+
+**ロールバック手順**:
+
+障害発生時は以下の手順で迅速に前バージョンへ戻す。
+
+```bash
+# 1. Vercel ダッシュボードからの即時ロールバック (推奨)
+# Vercel ダッシュボード > Deployments > 正常稼働していた Deployment > Promote to Production
+
+# 2. git を使ったロールバック (コードレベルで戻す場合)
+# 前のリリースタグを確認
+git log --tags --oneline
+
+# リリースタグにリセット (例: v0.9.0 に戻す)
+git checkout main
+git revert v1.0.0..HEAD   # 差分を revert コミットとして積む (force push 不要)
+git push origin main
+```
+
+**Prisma マイグレーションのロールバック**:
+
+```bash
+# 直前のマイグレーションを DOWN する (schema.prisma を前バージョンに戻した上で実行)
+npx prisma migrate diff \
+  --from-schema-datamodel prisma/schema.prisma \
+  --to-schema-datasource prisma/schema.prisma \
+  --script > rollback.sql
+
+# 確認後、Supabase SQL Editor または psql で rollback.sql を実行
+```
+
+> **注意**: Prisma は自動ロールバックをサポートしない。本番 DB に対する手動 SQL 実行が必要なため、事前に rollback.sql をレビューすること。
 
 **ブランチ命名**:
 ```
@@ -450,8 +482,24 @@ jobs:
       - run: npm run build
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.TEST_DIRECT_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          # GEMINI_API_KEYは本番APIを呼ばないようE2EテストではAIエンドポイントをモック
 ```
+
+**GitHub Secrets の設定**:
+- `TEST_DATABASE_URL` / `TEST_DIRECT_URL`: E2E テスト専用の Supabase プロジェクト接続文字列（本番とは分離）
+- `NEXTAUTH_SECRET`: ランダム文字列（`openssl rand -base64 32` で生成）
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: テスト用 Google OAuth クライアント
+
+**E2E テストの AI 生成エンドポイント**: Gemini API を実際に呼ぶとコスト・レート制限・flakyness のリスクがあるため、`tests/e2e/` 内の AI 生成テストは `page.route()` で `POST /api/ai/generate` をインターセプトし、モックレスポンスを返す。
 
 **追加スクリプト** (`package.json` に設定):
 
@@ -477,11 +525,12 @@ export default defineConfig({
         // グローバル: 全体の最低ライン
         global: { branches: 80, functions: 80, lines: 80, statements: 80 },
         // サービスレイヤー全体: 高品質を維持
+        // ※ glob パターンキーは Vitest v2 時点で experimental。動作しない場合は perFile オプションで代替
         'src/lib/services/**': { branches: 90, functions: 90, lines: 90, statements: 90 },
         // SM-2アルゴリズム: 計算ロジックは完全カバレッジ必須
         'src/lib/services/sm2.ts': { branches: 100, functions: 100, lines: 100, statements: 100 },
       },
-      include: ['src/lib/services/**'],
+      include: ['src/**'],
     },
   },
 });

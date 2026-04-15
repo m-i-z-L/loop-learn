@@ -353,6 +353,187 @@ type TechDomain =
 
 ---
 
+### DeckWithStats
+
+**定義**: デッキの基本情報に加え、カード枚数・本日の復習予定枚数を付加した複合型。
+
+**実装**: `src/types/deck.ts`
+
+```typescript
+interface DeckWithStats extends Deck {
+  cardCount: number;         // デッキ内の総カード枚数
+  todayReviewCount: number;  // 本日の復習予定カード枚数
+}
+```
+
+**使用箇所**: `DeckService.getDecksByUser()` の戻り値。デッキ一覧画面で使用。
+
+---
+
+### SM2Result
+
+**定義**: SM-2アルゴリズムの計算結果を格納する型。カードに適用してDBを更新する。
+
+**実装**: `src/types/review.ts`
+
+```typescript
+interface SM2Result {
+  easeFactor: number;      // 更新後の難易度係数
+  interval: number;        // 更新後の次回復習間隔 (日数)
+  repetitions: number;     // 更新後の連続正解回数
+  nextReviewDate: Date;    // 次回復習予定日
+}
+```
+
+**使用箇所**: `SM2Service.calculate()` の戻り値。`ReviewService.submitReview()` から呼ばれる。
+
+---
+
+### SessionSummary
+
+**定義**: 復習セッション終了時に表示する成果サマリーの型。
+
+**実装**: `src/types/review.ts`
+
+```typescript
+interface SessionSummary {
+  reviewedCount: number;        // 本セッションで復習したカード枚数
+  averageRating: number;        // 平均自己評価 (1.0〜4.0)
+  currentStreak: number;        // 現在の連続学習日数
+  masteredCount: number;        // 習得済み (interval >= 21日) に達したカード枚数
+}
+```
+
+**使用箇所**: `ReviewService.getSessionSummary()` の戻り値。復習セッション終了サマリー画面で使用。
+
+---
+
+### UserStats
+
+**定義**: ダッシュボード表示に必要なユーザーの学習統計全体を格納する型。
+
+**実装**: `src/types/stats.ts`
+
+```typescript
+interface UserStats {
+  totalCards: number;
+  masteryDistribution: {
+    unlearned: number;
+    learning: number;
+    mastered: number;
+  };
+  currentStreak: number;
+  todayReviewCount: number;
+  weeklyCompletionRate: number;  // 0.0〜1.0
+  heatmap: HeatmapEntry[];
+}
+```
+
+**使用箇所**: `StatsService.getUserStats()` の戻り値。`GET /api/stats` レスポンスの元データ。
+
+---
+
+### HeatmapEntry
+
+**定義**: ヒートマップ表示のための1日分の学習記録を格納する型。
+
+**実装**: `src/types/stats.ts`
+
+```typescript
+interface HeatmapEntry {
+  date: string;   // "YYYY-MM-DD" 形式 (JST基準)
+  count: number;  // その日に復習したカード枚数
+}
+```
+
+**使用箇所**: `StatsService.getHeatmapData()` の戻り値。`HeatmapCalendar` コンポーネントで使用。
+
+---
+
+### GeneratedCard
+
+**定義**: AIカード生成機能が返す未保存カードの型。ユーザーが編集・確認してから保存する。
+
+**実装**: `src/types/card.ts`
+
+```typescript
+interface GeneratedCard {
+  front: string;   // 生成された問題文
+  back: string;    // 生成された答え
+}
+```
+
+**使用箇所**: `AIGeneratorService.generateCards()` の戻り値。`POST /api/cards/batch` で保存する前の一時データ。
+
+---
+
+### DeckService
+
+**定義**: デッキのCRUD操作を担当するサービスクラス。
+
+**実装**: `src/lib/services/deck.ts`
+
+**主なメソッド**:
+- `createDeck(userId, data)` → `Deck`
+- `getDecksByUser(userId)` → `DeckWithStats[]`
+- `getDeckById(deckId, userId)` → `DeckWithStats`
+- `updateDeck(deckId, userId, data)` → `Deck`
+- `deleteDeck(deckId, userId)` → デッキ・Card・ReviewLog を CASCADE DELETE
+
+---
+
+### CardService
+
+**定義**: カードのCRUD操作と復習対象カードの取得を担当するサービスクラス。
+
+**実装**: `src/lib/services/card.ts`
+
+**主なメソッド**:
+- `createCard(userId, data)` → `Card`
+- `getCardsByDeck(deckId, userId)` → `Card[]`
+- `updateCard(cardId, userId, data)` → `Card`
+- `deleteCard(cardId, userId)` → ReviewLog を CASCADE DELETE
+- `getTodayReviewCards(userId, deckId?)` → `Card[]`
+
+---
+
+### ReviewService
+
+**定義**: 復習セッションのロジック（SM-2更新・ReviewLog記録・サマリー生成）を担当するサービスクラス。
+
+**実装**: `src/lib/services/review.ts`
+
+**主なメソッド**:
+- `submitReview(cardId, userId, rating)` → `{ nextReviewDate, newInterval }`
+- `getSessionSummary(userId, sessionDate)` → `SessionSummary`
+
+---
+
+### StatsService
+
+**定義**: ユーザーの学習統計（ヒートマップ・習熟度分布・ストリーク）を集計するサービスクラス。
+
+**実装**: `src/lib/services/stats.ts`
+
+**主なメソッド**:
+- `getUserStats(userId)` → `UserStats`
+- `getHeatmapData(userId, days)` → `HeatmapEntry[]`
+
+---
+
+### AIGeneratorService
+
+**定義**: Gemini APIと連携してテキストからQ&Aカードを自動生成するサービスクラス。
+
+**実装**: `src/lib/services/aiGenerator.ts`
+
+**主なメソッド**:
+- `generateCards(text, domain, count)` → `GeneratedCard[]`
+
+**注意**: APIキー (`GEMINI_API_KEY`) はサーバーサイドのみで使用。クライアントに露出しない。
+
+---
+
 ## 略語・頭字語
 
 ### PWA
@@ -484,17 +665,28 @@ stateDiagram-v2
 - [復習セッション](#復習セッション-review-session)
 
 ### A-Z
+- [AIGeneratorService](#aigeneratorservice)
+- [CardService](#cardservice)
+- [DeckService](#deckservice)
+- [DeckWithStats](#deckwithstats)
 - [Gemini API](#gemini-api)
+- [GeneratedCard](#generatedcard)
+- [HeatmapEntry](#heatmapentry)
 - [Mermaid](#mermaid)
 - [TechDomain](#techdomain)
 - [NextAuth.js](#nextauthjs-authjs)
 - [Next.js App Router](#nextjs-app-router)
 - [Prisma](#prisma)
 - [PWA](#pwa)
+- [ReviewService](#reviewservice)
 - [RLS](#rls-row-level-security)
 - [RSC](#rsc)
+- [SessionSummary](#sessionsummary)
 - [SM-2アルゴリズム](#sm-2アルゴリズム)
 - [SM-2 (略語)](#sm-2)
+- [SM2Result](#sm2result)
 - [SRS](#srs)
+- [StatsService](#statsservice)
 - [Supabase](#supabase)
+- [UserStats](#userstats)
 - [Zod](#zod)

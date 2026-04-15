@@ -16,6 +16,7 @@ loop-learn/
 │   ├── integration/                  # Vitest統合テスト
 │   └── e2e/                          # Playwright E2Eテスト
 ├── docs/                             # プロジェクトドキュメント
+├── .github/                          # GitHub Actions CI/CD設定
 ├── .claude/                          # Claude Code設定・スキル
 ├── .steering/                        # 機能開発ごとのタスク管理
 └── scripts/                          # 開発補助スクリプト
@@ -47,6 +48,7 @@ loop-learn/
 **構造**:
 ```
 app/
+├── page.tsx                          # ランディングページ (未ログイン時: サービス紹介)
 ├── (auth)/
 │   ├── login/
 │   │   └── page.tsx
@@ -77,7 +79,8 @@ app/
     │   ├── route.ts                  # GET (一覧), POST (作成)
     │   └── [deckId]/route.ts         # GET, PUT, DELETE
     ├── cards/
-    │   ├── route.ts                  # POST (作成)
+    │   ├── route.ts                  # GET (一覧), POST (作成)
+    │   ├── batch/route.ts            # POST (AI生成カードの一括保存)
     │   └── [cardId]/route.ts         # GET, PUT, DELETE
     ├── review/
     │   ├── today/route.ts            # GET (本日の復習カード)
@@ -356,6 +359,57 @@ components ──→ types のみ依存
 ├── settings.json
 └── skills/                           # /コマンドで呼び出せるスキル
 ```
+
+---
+
+### public/ (静的ファイル)
+
+**役割**: Next.js が `/` パスでそのまま配信する静的ファイル。PWA対応に必要なファイルを配置。
+
+**構造**:
+```
+public/
+├── manifest.json                     # PWAマニフェスト (アプリ名・アイコン・テーマカラー)
+└── icons/
+    ├── icon-192x192.png              # Android ホーム画面アイコン
+    └── icon-512x512.png              # スプラッシュスクリーン・PWAインストール用アイコン
+```
+
+**注意**: Service Worker (`sw.js`) は Next.js のビルドプロセスで生成するため、ソースには含めない。
+
+---
+
+### scripts/ (開発補助スクリプト)
+
+**役割**: 開発・運用を補助する単発実行用スクリプト。アプリケーションコードには含めない処理を配置。
+
+**構造**:
+```
+scripts/
+├── seed.ts                           # 開発用シードデータ投入 (Prismaでサンプルデッキ・カードを生成)
+└── check-env.ts                      # 必要な環境変数が設定されているか起動前に検証
+```
+
+**実行方法**:
+```bash
+npx ts-node scripts/seed.ts           # シードデータ投入
+npx ts-node scripts/check-env.ts      # 環境変数チェック
+```
+
+---
+
+### .github/ (CI/CD設定)
+
+**役割**: GitHub Actions のワークフロー定義。プッシュ・PRをトリガーにLint・テスト・ビルドを自動実行。
+
+**構造**:
+```
+.github/
+└── workflows/
+    └── ci.yml                        # メインCIワークフロー (lint / typecheck / test / build / E2E)
+```
+
+詳細な `ci.yml` の内容は [開発ガイドライン - CI/CD](./development-guidelines.md#cicd) を参照。
 
 ---
 

@@ -21,7 +21,7 @@
 | NextAuth.js | 5.x (Auth.js) | 認証 | Google OAuth・メールパスワード認証に対応。Next.js App Routerとの統合が公式サポート |
 | react-markdown | 9.x | Markdownレンダリング | rehype-sanitize と組み合わせてXSS安全なMarkdown描画が可能 |
 | mermaid | 11.x | ダイアグラム描画 | シーケンス図・ER図・フローチャートをコードから描画。動的インポートでバンドル分割可能 |
-| @google/generative-ai | 最新 | Gemini API クライアント | カード自動生成機能。無料枠あり(Gemini 2.0 Flash: 15RPM・100万トークン/日) |
+| @google/generative-ai | 0.x | Gemini API クライアント | カード自動生成機能。無料枠あり(Gemini 2.0 Flash: 15RPM・100万トークン/日) |
 | Zod | 3.x | バリデーション | TypeScriptとの親和性が高く、API入力の型安全バリデーションを実現 |
 
 ### データベース・インフラ
@@ -38,7 +38,7 @@
 | ESLint | 9.x | Lint | Next.js公式設定に対応。コードスタイル統一 |
 | Prettier | 3.x | フォーマッター | ESLintと連携。自動フォーマットで議論を排除 |
 | Vitest | 2.x | ユニット・統合テスト | Vite互換・TypeScript対応・高速。Jest互換APIで移行コスト低 |
-| Playwright | 最新 | E2Eテスト | クロスブラウザ対応・モバイルビューポートのエミュレーションが可能 |
+| Playwright | 1.x | E2Eテスト | クロスブラウザ対応・モバイルビューポートのエミュレーションが可能 |
 
 ---
 
@@ -118,7 +118,7 @@
 | 初期ページ読み込み | 2秒以内 (3G回線) | RSCによるSSR・画像なし方針・Mermaidの動的インポート |
 | 今日の復習カード取得 | 500ms以内 | `(userId, nextReviewDate)` 複合インデックス |
 | カードフリップアニメーション | 16ms以内 (60fps) | CSS transformのみ使用・JSでレイアウトを触らない |
-| AI カード生成 | 30秒以内 | Gemini APIのストリーミングレスポンスで体感速度を向上 |
+| AI カード生成 | 30秒以内 | 構造化JSON (カードリスト) を一括返却。ローディング表示でユーザーに進行中を伝える |
 
 ### リソース使用量
 
@@ -175,7 +175,7 @@ sequenceDiagram
 
 ### 機能拡張性
 
-- **AI プロバイダー差し替え**: `AIGeneratorService` インターフェースを抽象化し、Claude以外への切り替えを容易にする
+- **AI プロバイダー差し替え**: `AIGeneratorService` インターフェースを抽象化し、他のLLMプロバイダー（OpenAI・Claude等）への切り替えを容易にする
 - **カードタイプの追加**: `CardType` の Union型拡張と対応レンダラーコンポーネントの追加で対応可能
 - **学習アルゴリズムの差し替え**: `SM2Service` を `SpacedRepetitionService` インターフェースに抽象化済み
 
@@ -236,6 +236,9 @@ sequenceDiagram
 | next-auth | 認証 | メジャー固定 (`^5.0.0`) |
 | @google/generative-ai | Gemini API | マイナー固定 (`^0.x.x`) |
 | mermaid | ダイアグラム | メジャー固定 (`^11.0.0`) |
+| react-markdown | Markdownレンダリング | メジャー固定 (`^9.0.0`) |
+| remark-gfm | GFM拡張（テーブル・打ち消し線等） | メジャー固定 (`^4.0.0`) |
+| rehype-sanitize | XSSサニタイズ | マイナー固定 (`^6.0.0`) |
 | zod | バリデーション | マイナー固定 (`^3.0.0`) |
 | tailwindcss | CSS | メジャー固定 (`^4.0.0`) |
 | vitest | テスト | マイナー固定 (`^2.0.0`) |
