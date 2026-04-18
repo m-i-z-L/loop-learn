@@ -1,0 +1,133 @@
+# M2: デッキ & カード管理 — デッキCRUD + カード完全CRUD + Mermaid対応
+
+> 状態: ⬜ 未着手
+> 対象期間: 目安 1〜2週間
+> 依存: M1完了
+
+---
+
+## 概要
+
+ユーザーが学習コンテンツを「デッキ」という単位で体系的に管理できるようにする。
+デッキの作成・編集・削除と、カードの一覧・編集・削除を実装し、
+カード作成時のデッキ選択を実データで動作させる。
+Mermaid対応で技術ドキュメントの図解もカードに埋め込めるようにする。
+
+---
+
+## 含む機能・タスク
+
+### デッキ管理 (データ層)
+
+- [ ] `src/lib/validations/deck.schema.ts` を作成
+  - [ ] createDeckSchema (name: 1-50文字, description: max200, icon: emoji/preset)
+  - [ ] updateDeckSchema
+- [ ] `src/lib/services/deck.ts` を作成
+  - [ ] `createDeck(userId, data)` 実装
+  - [ ] `getDecksByUser(userId)` — カード枚数・本日の復習予定枚数を含む DeckWithStats
+  - [ ] `getDeckById(deckId, userId)` — 所有権検証付き
+  - [ ] `updateDeck(deckId, userId, data)` 実装
+  - [ ] `deleteDeck(deckId, userId)` 実装 (CASCADE DELETE は schema 設定済み)
+
+### デッキ管理 (APIレイヤー)
+
+- [ ] `GET /api/decks` — ユーザーのデッキ一覧
+- [ ] `POST /api/decks` — デッキ作成
+- [ ] `GET /api/decks/[deckId]` — デッキ詳細
+- [ ] `PATCH /api/decks/[deckId]` — デッキ更新
+- [ ] `DELETE /api/decks/[deckId]` — デッキ削除
+
+### デッキ管理 (UIレイヤー)
+
+- [ ] `src/app/(app)/decks/page.tsx` — デッキ一覧 (カード枚数・今日の復習予定枚数表示)
+- [ ] `src/app/(app)/decks/new/page.tsx` — デッキ作成フォーム
+- [ ] `src/app/(app)/decks/[deckId]/page.tsx` — デッキ詳細・カード一覧 (ページネーション)
+- [ ] `src/app/(app)/decks/[deckId]/edit/page.tsx` — デッキ編集フォーム
+- [ ] `src/components/decks/DeckCard.tsx` — デッキ一覧の各デッキカード
+- [ ] `src/components/decks/DeckForm.tsx` — デッキ作成・編集共通フォーム (絵文字ピッカー含む)
+
+### カード完全CRUD (データ層・API)
+
+- [ ] `src/lib/services/card.ts` に追加
+  - [ ] `getCardsByDeck(deckId, userId)` — ページネーション対応 (20件/ページ, cursor-based)
+  - [ ] `updateCard(cardId, userId, data)` — 所有権検証付き
+  - [ ] `deleteCard(cardId, userId)` — 所有権検証付き
+- [ ] `GET /api/cards?deckId=` — デッキ別カード一覧 (cursor pagination)
+- [ ] `PATCH /api/cards/[cardId]` — カード更新
+- [ ] `DELETE /api/cards/[cardId]` — カード削除
+
+### カード完全CRUD (UI)
+
+- [ ] `src/app/(app)/cards/[cardId]/edit/page.tsx` — カード編集ページ
+- [ ] CardEditor にカード削除ボタンを追加
+- [ ] カード一覧での編集・削除ボタン追加
+
+### Mermaid対応
+
+- [ ] `mermaid` パッケージをインストール (`mermaid@^11.x`)
+- [ ] `src/components/cards/MermaidRenderer.tsx` を作成
+  - [ ] `next/dynamic` でクライアントサイドのみロード (SSRで例外になるため)
+  - [ ] コードブロック ` ```mermaid ``` ` を検出して MermaidRenderer に渡す
+- [ ] CardPreview の react-markdown に MermaidRenderer を統合
+
+### ダッシュボードへの動線
+
+- [ ] `src/app/(app)/dashboard/page.tsx` の最小実装 (今日の復習カード枚数表示のみ)
+  - 復習セッション本体はM3で実装するが、ナビゲーション起点としてページを作る
+- [ ] AppNav にデッキ一覧・ダッシュボードへのリンクを追加
+
+### 品質チェック
+
+- [ ] `npm run lint` がパスする
+- [ ] `npm run typecheck` がパスする
+- [ ] `npm test` がパスする
+- [ ] `npm run build` がパスする
+
+---
+
+## 受け入れ条件
+
+- [ ] デッキを作成・編集・削除できる
+- [ ] デッキ一覧でカード枚数が表示される
+- [ ] デッキ詳細でカード一覧が表示される
+- [ ] カードを編集・削除できる
+- [ ] カード作成フォームのデッキ選択に実際のデッキが表示される
+- [ ] Mermaidダイアグラムがカードプレビューで描画される
+- [ ] デッキ削除時にカード・ReviewLogが連動削除される (CASCADE)
+- [ ] 他ユーザーのデッキへのアクセスが403/404で弾かれる
+
+---
+
+## KPI貢献
+
+| KPI | 貢献内容 | 計測方法 |
+|-----|---------|---------|
+| カード作成数 50枚以上/月 | デッキ管理によりコンテンツ整理が容易になり作成継続率が向上 | Prismaのカード作成数集計 |
+| 7日間継続率 | デッキという「整理の器」により学習習慣が定着しやすくなる | MAU追跡 |
+
+---
+
+## 技術的前提条件・依存
+
+| 種別 | 内容 | 備考 |
+|------|------|------|
+| 前提マイルストーン | M1: 基盤構築 | 認証・Prismaスキーマ・カード作成基盤が必要 |
+| 外部サービス | Supabase PostgreSQL | Deck / Card テーブルへのデータ書き込み |
+
+---
+
+## 実装メモ
+
+- Mermaid.js はSSRで `window` 未定義エラーになるため `next/dynamic({ ssr: false })` が必須
+- カード一覧のページネーションは cursor-based を採用 (architecture.md の方針に従い `nextCursor` を返す)
+- デッキ削除の CASCADE は `prisma/schema.prisma` の `onDelete: Cascade` で設定済み
+- `DeckWithStats` は Prisma の `_count` + サブクエリで今日の復習予定枚数を集計する
+
+---
+
+## リスク
+
+| リスク | 影響度 | 対策 |
+|--------|--------|------|
+| Mermaidバンドルサイズが大きい (~2MB) | 中 | `next/dynamic` で遅延ロード必須。Mermaidを含むページのみロード |
+| カード削除時の意図しない連鎖削除 | 高 | UIで「デッキを削除すると○枚のカードも削除されます」の確認ダイアログを表示 |
