@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// Application Models
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts    Account[]
+  sessions    Session[]
+  decks       Deck[]
+  cards       Card[]
+  reviewLogs  ReviewLog[]
+}
+
+model Deck {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  icon        String   @default("📘")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@index([userId])
+}
+
+model Card {
+  id         String   @id @default(cuid())
+  deckId     String
+  userId     String
+  cardType   CardType
+  front      String   @db.Text
+  back       String   @db.Text
+  tags       String[]
+
+  // SM-2パラメータ
+  easeFactor   Float    @default(2.5)
+  interval     Int      @default(1)
+  repetitions  Int      @default(0)
+  nextReviewDate DateTime @default(now())
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  deck       Deck        @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewLogs ReviewLog[]
+
+  // 今日の復習カード取得 & 期限切れ検索の最適化
+  @@index([userId, nextReviewDate])
+  // デッキ別カード一覧取得の最適化
+  @@index([deckId])
+}
+
+model ReviewLog {
+  id               String   @id @default(cuid())
+  cardId           String
+  userId           String
+  rating           Int      // 1=全然わからない, 2=うっすら, 3=わかった, 4=完璧
+  previousInterval Int
+  newInterval      Int
+  reviewedAt       DateTime @default(now())
+
+  // Relations
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 統計・ヒートマップクエリの最適化
+  @@index([userId, reviewedAt])
+}
+
+enum CardType {
+  qa
+  cloze
+  code
+  freewrite
+}
+
+// ============================================================
+// NextAuth.js (Auth.js v5) Models
+// ============================================================
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}

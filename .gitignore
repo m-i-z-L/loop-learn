@@ -1,8 +1,29 @@
-# Claude Code
-.claude/
+# 依存関係
+node_modules/
+
+# ビルド成果物
+.next/
+dist/
+out/
+
+# 環境変数 (機密情報)
+.env
+.env.local
+.env.*.local
+
+# テスト成果物
+coverage/
+playwright-report/
+test-results/
+
+# OS・エディタ
+.DS_Store
+*.log
+
+# ステアリング (開発中タスク管理 - リポジトリ管理不要)
 .steering/
 
-# OS
-.DS_Store
+# Claude Code
+.claude/
 
 docs/ideas/
