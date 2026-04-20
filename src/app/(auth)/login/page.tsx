@@ -22,7 +22,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const errorMessage = params.error
     ? (ERROR_MESSAGES[params.error] ?? ERROR_MESSAGES.default)
     : null;
-  const callbackUrl = params.callbackUrl ?? '/';
+  const rawCallback = params.callbackUrl ?? '/';
+  const callbackUrl =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//')
+      ? rawCallback
+      : '/';
 
   return (
     <>
