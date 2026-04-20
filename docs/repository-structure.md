@@ -49,6 +49,10 @@ loop-learn/
 ```
 app/
 ├── page.tsx                          # ランディングページ (未ログイン時: サービス紹介)
+├── terms/
+│   └── page.tsx                      # 利用規約
+├── privacy/
+│   └── page.tsx                      # プライバシーポリシー
 ├── (auth)/
 │   ├── login/
 │   │   └── page.tsx
