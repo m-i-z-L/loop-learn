@@ -19,9 +19,13 @@ export async function POST(req: Request) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const card = await createCard(session.user.id, parsed.data);
-  if (!card) {
-    return Response.json({ error: 'Deck not found or access denied' }, { status: 404 });
+  try {
+    const card = await createCard(session.user.id, parsed.data);
+    if (!card) {
+      return Response.json({ error: 'Deck not found or access denied' }, { status: 404 });
+    }
+    return Response.json(card, { status: 201 });
+  } catch {
+    return Response.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-  return Response.json(card, { status: 201 });
 }
