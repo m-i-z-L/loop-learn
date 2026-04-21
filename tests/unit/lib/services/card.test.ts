@@ -11,7 +11,9 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }));
@@ -219,25 +221,25 @@ describe('updateCard', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('カードを更新して返す', async () => {
-    vi.mocked(prisma.card.findFirst).mockResolvedValue(baseCard);
     const updated = { ...baseCard, front: '更新後の問題', updatedAt: new Date() };
-    vi.mocked(prisma.card.update).mockResolvedValue(updated);
+    vi.mocked(prisma.card.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.card.findFirst).mockResolvedValue(updated);
 
     const result = await updateCard(VALID_USER_ID, CARD_ID, { front: '更新後の問題' });
 
-    expect(prisma.card.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: CARD_ID } }),
+    expect(prisma.card.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: CARD_ID, userId: VALID_USER_ID } }),
     );
     expect(result!.front).toBe('更新後の問題');
   });
 
   it('カードが存在しないとき null を返す', async () => {
-    vi.mocked(prisma.card.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.card.updateMany).mockResolvedValue({ count: 0 });
 
     const result = await updateCard(VALID_USER_ID, CARD_ID, { front: '更新後の問題' });
 
     expect(result).toBeNull();
-    expect(prisma.card.update).not.toHaveBeenCalled();
+    expect(prisma.card.findFirst).not.toHaveBeenCalled();
   });
 });
 
@@ -245,21 +247,21 @@ describe('deleteCard', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('カードを削除して true を返す', async () => {
-    vi.mocked(prisma.card.findFirst).mockResolvedValue(baseCard);
-    vi.mocked(prisma.card.delete).mockResolvedValue(baseCard);
+    vi.mocked(prisma.card.deleteMany).mockResolvedValue({ count: 1 });
 
     const result = await deleteCard(VALID_USER_ID, CARD_ID);
 
-    expect(prisma.card.delete).toHaveBeenCalledWith({ where: { id: CARD_ID } });
+    expect(prisma.card.deleteMany).toHaveBeenCalledWith({
+      where: { id: CARD_ID, userId: VALID_USER_ID },
+    });
     expect(result).toBe(true);
   });
 
   it('カードが存在しないとき false を返す', async () => {
-    vi.mocked(prisma.card.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.card.deleteMany).mockResolvedValue({ count: 0 });
 
     const result = await deleteCard(VALID_USER_ID, CARD_ID);
 
     expect(result).toBe(false);
-    expect(prisma.card.delete).not.toHaveBeenCalled();
   });
 });

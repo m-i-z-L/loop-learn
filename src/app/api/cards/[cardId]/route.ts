@@ -12,11 +12,15 @@ export async function GET(
   }
 
   const { cardId } = await params;
-  const card = await getCardById(session.user.id, cardId);
-  if (!card) {
-    return Response.json({ error: 'Card not found' }, { status: 404 });
+  try {
+    const card = await getCardById(session.user.id, cardId);
+    if (!card) {
+      return Response.json({ error: 'Card not found' }, { status: 404 });
+    }
+    return Response.json(card);
+  } catch {
+    return Response.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-  return Response.json(card);
 }
 
 export async function PATCH(

@@ -47,20 +47,17 @@ export async function getCardsByDeck(userId: string, deckId: string): Promise<Ca
 }
 
 export async function updateCard(userId: string, cardId: string, data: UpdateCardInput): Promise<Card | null> {
-  const existing = await getCardById(userId, cardId);
-  if (!existing) return null;
-
-  const card = await prisma.card.update({
-    where: { id: cardId },
+  const result = await prisma.card.updateMany({
+    where: { id: cardId, userId },
     data,
   });
-  return card as Card;
+  if (result.count === 0) return null;
+  return getCardById(userId, cardId);
 }
 
 export async function deleteCard(userId: string, cardId: string): Promise<boolean> {
-  const existing = await getCardById(userId, cardId);
-  if (!existing) return false;
-
-  await prisma.card.delete({ where: { id: cardId } });
-  return true;
+  const result = await prisma.card.deleteMany({
+    where: { id: cardId, userId },
+  });
+  return result.count > 0;
 }
