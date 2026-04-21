@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import type { CreateCardInput } from '@/lib/validations/card.schema';
+import type { CreateCardInput, UpdateCardInput } from '@/lib/validations/card.schema';
 import type { Card } from '@/types/card';
 
 export async function createCard(userId: string, data: CreateCardInput): Promise<Card | null> {
@@ -44,4 +44,20 @@ export async function getCardsByDeck(userId: string, deckId: string): Promise<Ca
     orderBy: { createdAt: 'desc' },
   });
   return cards as Card[];
+}
+
+export async function updateCard(userId: string, cardId: string, data: UpdateCardInput): Promise<Card | null> {
+  const result = await prisma.card.updateMany({
+    where: { id: cardId, userId },
+    data,
+  });
+  if (result.count === 0) return null;
+  return getCardById(userId, cardId);
+}
+
+export async function deleteCard(userId: string, cardId: string): Promise<boolean> {
+  const result = await prisma.card.deleteMany({
+    where: { id: cardId, userId },
+  });
+  return result.count > 0;
 }
