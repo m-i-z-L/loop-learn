@@ -10,11 +10,13 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }));
 
-import { createCard } from '@/lib/services/card';
+import { createCard, updateCard, deleteCard } from '@/lib/services/card';
 import { prisma } from '@/lib/prisma';
 import type { CreateCardInput } from '@/lib/validations/card.schema';
 
@@ -192,5 +194,72 @@ describe('createCard', () => {
     vi.mocked(prisma.card.create).mockRejectedValue(new Error('DB connection failed'));
 
     await expect(createCard(VALID_USER_ID, mockCardInput)).rejects.toThrow('DB connection failed');
+  });
+});
+
+const CARD_ID = 'cm2222222222222222222222';
+
+const baseCard = {
+  id: CARD_ID,
+  userId: VALID_USER_ID,
+  deckId: VALID_DECK_ID,
+  cardType: 'qa' as const,
+  front: 'TypeScriptのジェネリクスとは？',
+  back: '型をパラメータとして受け取る機能',
+  tags: ['typescript'],
+  easeFactor: 2.5,
+  interval: 1,
+  repetitions: 0,
+  nextReviewDate: new Date(),
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+describe('updateCard', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('カードを更新して返す', async () => {
+    vi.mocked(prisma.card.findFirst).mockResolvedValue(baseCard);
+    const updated = { ...baseCard, front: '更新後の問題', updatedAt: new Date() };
+    vi.mocked(prisma.card.update).mockResolvedValue(updated);
+
+    const result = await updateCard(VALID_USER_ID, CARD_ID, { front: '更新後の問題' });
+
+    expect(prisma.card.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: CARD_ID } }),
+    );
+    expect(result!.front).toBe('更新後の問題');
+  });
+
+  it('カードが存在しないとき null を返す', async () => {
+    vi.mocked(prisma.card.findFirst).mockResolvedValue(null);
+
+    const result = await updateCard(VALID_USER_ID, CARD_ID, { front: '更新後の問題' });
+
+    expect(result).toBeNull();
+    expect(prisma.card.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteCard', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('カードを削除して true を返す', async () => {
+    vi.mocked(prisma.card.findFirst).mockResolvedValue(baseCard);
+    vi.mocked(prisma.card.delete).mockResolvedValue(baseCard);
+
+    const result = await deleteCard(VALID_USER_ID, CARD_ID);
+
+    expect(prisma.card.delete).toHaveBeenCalledWith({ where: { id: CARD_ID } });
+    expect(result).toBe(true);
+  });
+
+  it('カードが存在しないとき false を返す', async () => {
+    vi.mocked(prisma.card.findFirst).mockResolvedValue(null);
+
+    const result = await deleteCard(VALID_USER_ID, CARD_ID);
+
+    expect(result).toBe(false);
+    expect(prisma.card.delete).not.toHaveBeenCalled();
   });
 });
