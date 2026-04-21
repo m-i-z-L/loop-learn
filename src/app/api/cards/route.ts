@@ -8,15 +8,24 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const parsed = createCardSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const card = await createCard(session.user.id, parsed.data);
-  if (!card) {
-    return Response.json({ error: 'Deck not found or access denied' }, { status: 404 });
+  try {
+    const card = await createCard(session.user.id, parsed.data);
+    if (!card) {
+      return Response.json({ error: 'Deck not found or access denied' }, { status: 404 });
+    }
+    return Response.json(card, { status: 201 });
+  } catch {
+    return Response.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-  return Response.json(card, { status: 201 });
 }

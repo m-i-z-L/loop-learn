@@ -22,7 +22,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const errorMessage = params.error
     ? (ERROR_MESSAGES[params.error] ?? ERROR_MESSAGES.default)
     : null;
-  const callbackUrl = params.callbackUrl ?? '/';
+  const rawCallback = params.callbackUrl ?? '/';
+  const callbackUrl =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//')
+      ? rawCallback
+      : '/';
 
   return (
     <>
@@ -73,9 +77,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
       <p className="mt-4 text-center text-xs text-gray-400">
         ログインすることで、
-        <a href="#" className="underline hover:text-gray-600">利用規約</a>
+        <a href="/terms" className="underline hover:text-gray-600">利用規約</a>
         および
-        <a href="#" className="underline hover:text-gray-600">プライバシーポリシー</a>
+        <a href="/privacy" className="underline hover:text-gray-600">プライバシーポリシー</a>
         に同意したものとみなします。
       </p>
     </>

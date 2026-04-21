@@ -49,6 +49,10 @@ loop-learn/
 ```
 app/
 ├── page.tsx                          # ランディングページ (未ログイン時: サービス紹介)
+├── terms/
+│   └── page.tsx                      # 利用規約
+├── privacy/
+│   └── page.tsx                      # プライバシーポリシー
 ├── (auth)/
 │   ├── login/
 │   │   └── page.tsx
@@ -276,7 +280,7 @@ tests/
 
 | ファイル | 用途 |
 |---------|------|
-| `next.config.ts` | Next.js設定 (Mermaid等のCSP設定含む) |
+| `next.config.ts` | Next.js設定 (画像ホスト許可・Mermaidのサーバーサイドバンドル除外) |
 | `prisma/schema.prisma` | DBスキーマ |
 | `postcss.config.mjs` | PostCSS設定 (Tailwind CSS v4 の `@tailwindcss/postcss` プラグインを登録) |
 | `tsconfig.json` | TypeScript設定 |
