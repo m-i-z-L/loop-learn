@@ -3,6 +3,19 @@
 import { useEffect, useId, useState } from 'react';
 import mermaid from 'mermaid';
 
+// mermaid.initialize() はアプリ内で1回だけ呼び出す（Mermaid v11 best practice）
+let mermaidInitialized = false;
+
+function ensureMermaidInitialized() {
+  if (mermaidInitialized) return;
+  mermaid.initialize({
+    startOnLoad: false,
+    suppressErrorRendering: true,
+    securityLevel: 'strict',
+  });
+  mermaidInitialized = true;
+}
+
 interface MermaidRendererProps {
   code: string;
 }
@@ -20,8 +33,10 @@ export default function MermaidRenderer({ code }: MermaidRendererProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // startOnLoad: false で自動起動を無効化（render() を手動呼び出しするため）
-    mermaid.initialize({ startOnLoad: false, suppressErrorRendering: true });
+    ensureMermaidInitialized();
+    // code 変更時に旧 SVG・エラーを即座にクリアして UI 状態を同期する
+    setSvgContent('');
+    setError(null);
 
     let cancelled = false;
 
