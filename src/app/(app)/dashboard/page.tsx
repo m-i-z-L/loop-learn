@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getDecksByUser } from '@/lib/services/deck';
 
@@ -8,7 +9,9 @@ import { getDecksByUser } from '@/lib/services/deck';
  */
 export default async function DashboardPage() {
   const session = await auth();
-  const decks = session?.user?.id ? await getDecksByUser(session.user.id) : [];
+  if (!session?.user?.id) notFound();
+
+  const decks = await getDecksByUser(session.user.id);
 
   const totalDueCards = decks.reduce((sum, deck) => sum + deck.dueCards, 0);
   const totalCards = decks.reduce((sum, deck) => sum + deck.totalCards, 0);
@@ -30,7 +33,7 @@ export default async function DashboardPage() {
           type="button"
           disabled
           title="復習セッションはまもなく実装予定です"
-          className="mt-4 w-full py-3 bg-blue-600 text-white font-medium rounded-lg opacity-40 cursor-not-allowed"
+          className="mt-4 w-full py-3 bg-blue-600 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
           復習を始める（準備中）
         </button>
