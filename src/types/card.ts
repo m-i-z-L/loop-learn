@@ -1,5 +1,8 @@
 export type CardType = 'qa' | 'cloze' | 'code' | 'freewrite';
 
+/** 復習時の自己評価 (1=全然わからない, 2=うっすら, 3=わかった, 4=完璧) */
+export type Rating = 1 | 2 | 3 | 4;
+
 export interface Card {
   id: string;
   deckId: string;
