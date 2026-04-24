@@ -25,6 +25,12 @@ export default function AppNav({ session }: AppNavProps) {
             ダッシュボード
           </Link>
           <Link
+            href="/stats"
+            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            進捗
+          </Link>
+          <Link
             href="/decks"
             className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
