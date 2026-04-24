@@ -18,11 +18,21 @@ import { getUserStats, getHeatmapData } from '@/lib/services/stats';
 import { prisma } from '@/lib/prisma';
 
 const USER_ID = 'cm1111111111111111111111';
+const JST_TZ = 'Asia/Tokyo';
 
+/** JST の今日の日付文字列 (YYYY-MM-DD) を返す */
+function todayJSTStr(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: JST_TZ }).format(new Date());
+}
+
+/**
+ * JST でN日前の正午を返す。
+ * プロダクションコードが JST ベースで日付を計算するため、
+ * テスト側も JST 明示の日付を使う。
+ */
 function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setHours(12, 0, 0, 0); // 正午で固定（日付ブレ防止）
-  d.setDate(d.getDate() - n);
+  const d = new Date(`${todayJSTStr()}T12:00:00+09:00`); // JST 正午で固定
+  d.setUTCDate(d.getUTCDate() - n);
   return d;
 }
 
@@ -128,8 +138,8 @@ describe('getHeatmapData', () => {
   });
 
   it('今日のレビューが count に反映される', async () => {
-    const todayDate = new Date();
-    todayDate.setHours(10, 0, 0, 0);
+    // JST の今日 10:00 を明示（setHours はローカルTZ依存のため使わない）
+    const todayDate = new Date(`${todayJSTStr()}T10:00:00+09:00`);
     vi.mocked(prisma.reviewLog.findMany).mockResolvedValue([
       { reviewedAt: todayDate },
       { reviewedAt: todayDate },
