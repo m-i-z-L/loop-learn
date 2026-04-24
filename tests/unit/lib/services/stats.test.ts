@@ -49,6 +49,20 @@ describe('getUserStats', () => {
 
     expect(result.totalCards).toBe(10);
     expect(result.totalReviews).toBe(42);
+
+    // userId フィルターが各クエリに適用されていることを確認
+    expect(prisma.card.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: USER_ID }) }),
+    );
+    expect(prisma.reviewLog.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: USER_ID }) }),
+    );
+    expect(prisma.card.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: USER_ID }) }),
+    );
+    expect(prisma.reviewLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: USER_ID }) }),
+    );
   });
 
   it('masteryDistribution を正しく分類する', async () => {
@@ -127,6 +141,10 @@ describe('getHeatmapData', () => {
     const result = await getHeatmapData(USER_ID, 30);
 
     expect(result).toHaveLength(30);
+    // userId フィルターが適用されていることを確認
+    expect(prisma.reviewLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: USER_ID }) }),
+    );
   });
 
   it('レビューがない日は count: 0', async () => {
