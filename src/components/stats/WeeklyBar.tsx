@@ -33,7 +33,7 @@ export default function WeeklyBar({ heatmap }: WeeklyBarProps) {
             <div className="w-full flex items-end" style={{ height: '60px' }}>
               <div
                 className="w-full bg-blue-400 rounded-t transition-all"
-                style={{ height: `${Math.max(heightPct, 4)}%` }}
+                style={{ height: week.count === 0 ? '0%' : `${Math.max(heightPct, 4)}%` }}
                 title={`${week.label}〜 : ${week.count}回`}
               />
             </div>

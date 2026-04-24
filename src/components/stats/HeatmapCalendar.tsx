@@ -30,6 +30,8 @@ export default function HeatmapCalendar({ heatmap }: HeatmapCalendarProps) {
               <div
                 className={`w-7 h-7 rounded-sm ${getCellColor(entry.count)}`}
                 title={`${entry.date}: ${entry.count}回`}
+                aria-label={`${entry.date}: ${entry.count}回`}
+                role="img"
               />
             </div>
           );

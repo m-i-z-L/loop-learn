@@ -16,6 +16,12 @@ export interface HeatmapEntry {
   count: number;
 }
 
+/** アプリのタイムゾーン (JST 固定) */
+const APP_TZ = 'Asia/Tokyo';
+
+/** ストリーク計算に使う最大遡及日数（パフォーマンス上限） */
+const STREAK_LOOKBACK_DAYS = 366;
+
 /**
  * ユーザーの学習統計を集計する。
  *
@@ -23,6 +29,10 @@ export interface HeatmapEntry {
  * @returns 総カード数・総復習回数・連続学習日数・習熟度分布
  */
 export async function getUserStats(userId: string): Promise<UserStats> {
+  // ストリーク計算に必要な期間のみ取得（全件フェッチを防ぐパフォーマンス上限）
+  const streakSince = new Date();
+  streakSince.setDate(streakSince.getDate() - STREAK_LOOKBACK_DAYS);
+
   const [totalCards, totalReviews, cards, reviewLogs] = await Promise.all([
     prisma.card.count({ where: { userId } }),
     prisma.reviewLog.count({ where: { userId } }),
@@ -31,7 +41,7 @@ export async function getUserStats(userId: string): Promise<UserStats> {
       select: { repetitions: true, interval: true },
     }),
     prisma.reviewLog.findMany({
-      where: { userId },
+      where: { userId, reviewedAt: { gte: streakSince } },
       select: { reviewedAt: true },
       orderBy: { reviewedAt: 'desc' },
     }),
@@ -61,11 +71,17 @@ export async function getUserStats(userId: string): Promise<UserStats> {
  * @returns 日付昇順の HeatmapEntry 配列
  */
 export async function getHeatmapData(userId: string, days: number): Promise<HeatmapEntry[]> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  if (!Number.isInteger(days) || days <= 0) {
+    throw new Error('days must be a positive integer');
+  }
 
-  const since = new Date(today);
-  since.setDate(since.getDate() - (days - 1));
+  // JST の今日の開始時刻（00:00:00+09:00）を UTC 表現で取得
+  const todayJSTStr = toDateString(new Date());
+  const todayJST = new Date(`${todayJSTStr}T00:00:00+09:00`);
+
+  // days 日前の JST 00:00:00 を UTC 基準で算出
+  const since = new Date(todayJST);
+  since.setUTCDate(since.getUTCDate() - (days - 1));
 
   const reviewLogs = await prisma.reviewLog.findMany({
     where: {
@@ -85,20 +101,29 @@ export async function getHeatmapData(userId: string, days: number): Promise<Heat
   // days 日分のスロットを生成（count: 0 で初期化）
   const result: HeatmapEntry[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dateStr = toDateString(date);
+    const slotDate = new Date(todayJST);
+    slotDate.setUTCDate(slotDate.getUTCDate() - i);
+    const dateStr = toDateString(slotDate);
     result.push({ date: dateStr, count: countByDate.get(dateStr) ?? 0 });
   }
 
   return result;
 }
 
-/** Date を 'YYYY-MM-DD' 文字列に変換する（ローカル日付） */
+/**
+ * Date を JST の 'YYYY-MM-DD' 文字列に変換する。
+ * サーバーが UTC 環境でも JST 日付を正確に返す。
+ */
 function toDateString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const y = parts.find((p) => p.type === 'year')!.value;
+  const m = parts.find((p) => p.type === 'month')!.value;
+  const d = parts.find((p) => p.type === 'day')!.value;
   return `${y}-${m}-${d}`;
 }
 
@@ -107,12 +132,12 @@ function toDateString(date: Date): string {
  * 今日または昨日（まだ今日レビューしていない場合）を起点とする。
  */
 function calculateStreak(reviewDates: Set<string>): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // JST の今日の開始時刻（00:00:00+09:00）を UTC 表現で取得
+  const todayStr = toDateString(new Date());
+  const todayJST = new Date(`${todayStr}T00:00:00+09:00`);
 
-  const todayStr = toDateString(today);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterday = new Date(todayJST);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const yesterdayStr = toDateString(yesterday);
 
   // 今日レビューがある → 今日から遡る
@@ -128,12 +153,12 @@ function calculateStreak(reviewDates: Set<string>): number {
   }
 
   let streak = 0;
-  const cursor = new Date(today);
-  cursor.setDate(cursor.getDate() - startOffset);
+  const cursor = new Date(todayJST);
+  cursor.setUTCDate(cursor.getUTCDate() - startOffset);
 
   while (reviewDates.has(toDateString(cursor))) {
     streak++;
-    cursor.setDate(cursor.getDate() - 1);
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
 
   return streak;
