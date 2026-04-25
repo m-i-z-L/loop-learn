@@ -1,0 +1,39 @@
+import { auth } from '@/lib/auth';
+import { generateCardsSchema } from '@/lib/validations/ai.schema';
+import { generateCards } from '@/lib/services/ai';
+
+// Vercel Serverless: AI生成は最大60秒を許可
+export const maxDuration = 60;
+
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const parsed = generateCardsSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const { text, domain } = parsed.data;
+
+  try {
+    const cards = await generateCards(text, domain);
+    return Response.json({ cards });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    // GEMINI_API_KEY 未設定など設定エラーは503で返す
+    if (message.includes('not configured')) {
+      return Response.json({ error: 'AI service is not configured' }, { status: 503 });
+    }
+    return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
