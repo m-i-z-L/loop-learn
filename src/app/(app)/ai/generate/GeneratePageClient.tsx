@@ -6,16 +6,22 @@ import type { Deck } from '@/types/deck';
 import GenerateForm from '@/components/ai/GenerateForm';
 import GeneratedCardList from '@/components/ai/GeneratedCardList';
 
+export type GeneratedCardWithId = GeneratedCard & { tempId: string };
+
 interface GeneratePageClientProps {
   decks: Deck[];
 }
 
 export default function GeneratePageClient({ decks }: GeneratePageClientProps) {
-  const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
+  const [generatedCards, setGeneratedCards] = useState<GeneratedCardWithId[]>([]);
   const [activeDeckId, setActiveDeckId] = useState('');
 
   const handleGenerated = (cards: GeneratedCard[], deckId: string) => {
-    setGeneratedCards(cards);
+    const withIds: GeneratedCardWithId[] = cards.map((card, i) => ({
+      ...card,
+      tempId: `${Date.now()}-${i}`,
+    }));
+    setGeneratedCards(withIds);
     setActiveDeckId(deckId);
   };
 

@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { generateCardsSchema } from '@/lib/validations/ai.schema';
 import { generateCards } from '@/lib/services/ai';
+import { getDeckById } from '@/lib/services/deck';
 
 // Vercel Serverless: AI生成は最大60秒を許可
 export const maxDuration = 60;
@@ -23,7 +24,13 @@ export async function POST(req: Request) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { text, domain } = parsed.data;
+  const { text, domain, deckId } = parsed.data;
+
+  // デッキの存在確認とアクセス権チェック
+  const deck = await getDeckById(deckId, session.user.id);
+  if (!deck) {
+    return Response.json({ error: 'Deck not found or access denied' }, { status: 404 });
+  }
 
   try {
     const cards = await generateCards(text, domain);

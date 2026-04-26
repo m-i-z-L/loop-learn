@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { GeneratedCard } from '@/lib/services/ai';
+import type { GeneratedCardWithId } from '@/app/(app)/ai/generate/GeneratePageClient';
 import GeneratedCardItem from './GeneratedCardItem';
 
 interface GeneratedCardListProps {
-  cards: GeneratedCard[];
+  cards: GeneratedCardWithId[];
   deckId: string;
-  onCardsChange: (cards: GeneratedCard[]) => void;
+  onCardsChange: (cards: GeneratedCardWithId[]) => void;
 }
 
 export default function GeneratedCardList({ cards, deckId, onCardsChange }: GeneratedCardListProps) {
@@ -16,13 +16,12 @@ export default function GeneratedCardList({ cards, deckId, onCardsChange }: Gene
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (index: number, updated: GeneratedCard) => {
-    const next = cards.map((c, i) => (i === index ? updated : c));
-    onCardsChange(next);
+  const handleChange = (tempId: string, updated: GeneratedCardWithId) => {
+    onCardsChange(cards.map((c) => (c.tempId === tempId ? updated : c)));
   };
 
-  const handleDelete = (index: number) => {
-    onCardsChange(cards.filter((_, i) => i !== index));
+  const handleDelete = (tempId: string) => {
+    onCardsChange(cards.filter((c) => c.tempId !== tempId));
   };
 
   const handleSave = async () => {
@@ -71,12 +70,12 @@ export default function GeneratedCardList({ cards, deckId, onCardsChange }: Gene
       </h2>
 
       <div className="space-y-3">
-        {cards.map((card, index) => (
+        {cards.map((card) => (
           <GeneratedCardItem
-            key={index}
+            key={card.tempId}
             card={card}
-            onChange={(updated) => handleChange(index, updated)}
-            onDelete={() => handleDelete(index)}
+            onChange={(updated) => handleChange(card.tempId, { ...updated, tempId: card.tempId })}
+            onDelete={() => handleDelete(card.tempId)}
           />
         ))}
       </div>
