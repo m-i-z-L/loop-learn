@@ -37,7 +37,13 @@ export default function GenerateForm({ decks, onGenerated }: GenerateFormProps) 
 
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        setError(data.error ?? '生成に失敗しました');
+        if (res.status === 429) {
+          setError('リクエスト制限に達しました。しばらく待ってから再度お試しください。');
+        } else if (res.status === 503) {
+          setError('AIサービスが設定されていません。管理者にお問い合わせください。');
+        } else {
+          setError(data.error ?? '生成に失敗しました');
+        }
         return;
       }
 

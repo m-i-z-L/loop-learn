@@ -24,7 +24,7 @@ export async function generateCards(text: string, domain: Domain): Promise<Gener
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     // systemInstruction はユーザー入力と分離し、プロンプトインジェクションを防止
     systemInstruction: [
       'あなたはフラッシュカード生成の専門家です。',

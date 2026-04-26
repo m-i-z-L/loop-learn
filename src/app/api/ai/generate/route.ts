@@ -30,9 +30,17 @@ export async function POST(req: Request) {
     return Response.json({ cards });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal Server Error';
+    console.error('[ai/generate] error:', err);
     // GEMINI_API_KEY 未設定など設定エラーは503で返す
     if (message.includes('not configured')) {
       return Response.json({ error: 'AI service is not configured' }, { status: 503 });
+    }
+    // レート制限・クォータ超過は429で返す
+    if (message.includes('429') || message.includes('quota') || message.includes('Too Many Requests') || message.includes('credits')) {
+      return Response.json(
+        { error: 'AIサービスのリクエスト制限に達しました。しばらく待ってから再度お試しください。' },
+        { status: 429 },
+      );
     }
     return Response.json({ error: 'Internal Server Error' }, { status: 500 });
   }
