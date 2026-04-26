@@ -45,9 +45,12 @@ export default function GeneratedCardList({ cards, deckId, onCardsChange }: Gene
         ),
       );
 
-      const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok));
-      if (failed.length > 0) {
-        setError(`${failed.length}枚のカードの保存に失敗しました。再度お試しください。`);
+      const failedCards = cards.filter(
+        (_, i) => results[i].status === 'rejected' || (results[i].status === 'fulfilled' && !(results[i] as PromiseFulfilledResult<Response>).value.ok),
+      );
+      if (failedCards.length > 0) {
+        onCardsChange(failedCards);
+        setError(`${failedCards.length}枚のカードの保存に失敗しました。再度お試しください。`);
         return;
       }
 
