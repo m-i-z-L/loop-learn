@@ -21,7 +21,10 @@ export default async function ReviewPage({
     : Promise.resolve(null);
   const [cards, deck] = await Promise.all([cardsPromise, deckPromise]);
 
-  const backHref = deckId ? `/decks/${deckId}` : '/dashboard';
+  // deck が null にフォールバックした場合（デッキ不存在・取得失敗）は
+  // デッキコンテキストなしとして扱い、ダッシュボードへ戻す
+  const hasDeckContext = deck !== null;
+  const backHref = hasDeckContext ? `/decks/${deck.id}` : '/dashboard';
 
   if (cards.length === 0) {
     return (
@@ -33,13 +36,13 @@ export default async function ReviewPage({
           href={backHref}
           className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
-          {deckId ? 'デッキに戻る' : 'ダッシュボードへ'}
+          {hasDeckContext ? 'デッキに戻る' : 'ダッシュボードへ'}
         </Link>
       </div>
     );
   }
 
-  const title = deck ? `${deck.icon} ${deck.name}` : '復習セッション';
+  const title = hasDeckContext ? `${deck.icon} ${deck.name}` : '復習セッション';
 
   return (
     <div>
@@ -52,7 +55,7 @@ export default async function ReviewPage({
           中断する
         </Link>
       </div>
-      <ReviewSession cards={cards} deckId={deckId} />
+      <ReviewSession cards={cards} deckId={hasDeckContext ? deck.id : undefined} />
     </div>
   );
 }
