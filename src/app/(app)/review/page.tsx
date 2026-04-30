@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getTodayReviewCards } from '@/lib/services/card';
+import { getDeckById } from '@/lib/services/deck';
 import ReviewSession from '@/components/review/ReviewSession';
 
 export default async function ReviewPage({
@@ -13,7 +14,12 @@ export default async function ReviewPage({
   if (!session?.user?.id) notFound();
 
   const { deckId } = await searchParams;
-  const cards = await getTodayReviewCards(session.user.id, deckId);
+  const [cards, deck] = await Promise.all([
+    getTodayReviewCards(session.user.id, deckId),
+    deckId ? getDeckById(deckId, session.user.id) : Promise.resolve(null),
+  ]);
+
+  const backHref = deckId ? `/decks/${deckId}` : '/dashboard';
 
   if (cards.length === 0) {
     return (
@@ -22,27 +28,29 @@ export default async function ReviewPage({
         <h1 className="text-2xl font-bold text-gray-900 mb-2">今日の復習はありません</h1>
         <p className="text-gray-500 mb-8">お疲れ様です。また明日復習しましょう。</p>
         <Link
-          href="/dashboard"
+          href={backHref}
           className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
-          ダッシュボードへ
+          {deckId ? 'デッキに戻る' : 'ダッシュボードへ'}
         </Link>
       </div>
     );
   }
 
+  const title = deck ? `${deck.icon} ${deck.name}` : '復習セッション';
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">復習セッション</h1>
+        <h1 className="text-xl font-bold text-gray-900">{title}</h1>
         <Link
-          href="/dashboard"
+          href={backHref}
           className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
         >
           中断する
         </Link>
       </div>
-      <ReviewSession cards={cards} />
+      <ReviewSession cards={cards} deckId={deckId} />
     </div>
   );
 }
