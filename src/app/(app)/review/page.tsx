@@ -14,10 +14,12 @@ export default async function ReviewPage({
   if (!session?.user?.id) notFound();
 
   const { deckId } = await searchParams;
-  const [cards, deck] = await Promise.all([
-    getTodayReviewCards(session.user.id, deckId),
-    deckId ? getDeckById(deckId, session.user.id) : Promise.resolve(null),
-  ]);
+  // getDeckById はデッキ情報の補助取得のため、失敗してもカード表示を優先して null にフォールバックする
+  const cardsPromise = getTodayReviewCards(session.user.id, deckId);
+  const deckPromise = deckId
+    ? getDeckById(deckId, session.user.id).catch(() => null)
+    : Promise.resolve(null);
+  const [cards, deck] = await Promise.all([cardsPromise, deckPromise]);
 
   const backHref = deckId ? `/decks/${deckId}` : '/dashboard';
 
