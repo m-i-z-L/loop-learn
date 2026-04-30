@@ -16,6 +16,8 @@ export default async function DashboardPage() {
   const totalDueCards = decks.reduce((sum, deck) => sum + deck.dueCards, 0);
   const totalCards = decks.reduce((sum, deck) => sum + deck.totalCards, 0);
 
+  const decksWithDue = decks.filter((d) => d.dueCards > 0);
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
@@ -34,12 +36,35 @@ export default async function DashboardPage() {
             href="/review"
             className="mt-4 block w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors text-center"
           >
-            復習を始める
+            全デッキを復習する
           </Link>
         ) : (
           <p className="mt-4 text-sm text-center text-gray-400">今日の復習はありません</p>
         )}
       </div>
+
+      {/* デッキ別復習 */}
+      {decksWithDue.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">デッキ別復習</h2>
+          <ul className="space-y-2">
+            {decksWithDue.map((deck) => (
+              <li key={deck.id}>
+                <Link
+                  href={`/review?deckId=${deck.id}`}
+                  className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-sm text-gray-800">
+                    <span>{deck.icon}</span>
+                    <span className="font-medium">{deck.name}</span>
+                  </span>
+                  <span className="text-sm font-medium text-blue-600">{deck.dueCards}枚</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* クイックリンク */}
       <div className="grid grid-cols-2 gap-4">

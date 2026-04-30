@@ -5,12 +5,12 @@ import { auth } from '@/lib/auth';
 export default async function ReviewSummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reviewed?: string; avgRating?: string }>;
+  searchParams: Promise<{ reviewed?: string; avgRating?: string; deckId?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) notFound();
 
-  const { reviewed, avgRating } = await searchParams;
+  const { reviewed, avgRating, deckId } = await searchParams;
   const parsedReviewed = Number(reviewed);
   const parsedAvg = Number(avgRating);
   // 不正なURL直入力(NaN・負数)への安全対策
@@ -35,9 +35,21 @@ export default async function ReviewSummaryPage({
       </div>
 
       <div className="flex flex-col gap-3 items-center">
+        {deckId && (
+          <Link
+            href={`/decks/${deckId}`}
+            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            このデッキに戻る
+          </Link>
+        )}
         <Link
           href="/dashboard"
-          className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          className={`px-6 py-2.5 font-medium rounded-lg transition-colors ${
+            deckId
+              ? 'text-gray-500 hover:text-gray-700 text-sm'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
           ダッシュボードへ
         </Link>

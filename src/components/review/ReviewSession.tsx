@@ -9,13 +9,14 @@ import type { Card, Rating } from '@/types/card';
 
 interface ReviewSessionProps {
   cards: Card[];
+  deckId?: string;
 }
 
 /**
  * 復習セッション全体を管理するクライアントコンポーネント。
  * カードの表示・フリップ・評価送信・次カードへの遷移を制御する。
  */
-export default function ReviewSession({ cards }: ReviewSessionProps) {
+export default function ReviewSession({ cards, deckId }: ReviewSessionProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -46,7 +47,8 @@ export default function ReviewSession({ cards }: ReviewSessionProps) {
       if (nextIndex >= cards.length) {
         // セッション完了 → サマリーページへ
         const avgRating = (newRatings.reduce((sum, r) => sum + r, 0) / newRatings.length).toFixed(1);
-        router.push(`/review/summary?reviewed=${newRatings.length}&avgRating=${avgRating}`);
+        const deckParam = deckId ? `&deckId=${deckId}` : '';
+        router.push(`/review/summary?reviewed=${newRatings.length}&avgRating=${avgRating}${deckParam}`);
         return;
       }
 
